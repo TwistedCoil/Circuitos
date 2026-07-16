@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karnaugh Lab — puertas lógicas y mapas de Karnaugh hasta 5 variables</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+#kl{
+  /* ============================================================
+     PALETA — alineada con el tema Blocksy de justnot.fun.
+     Los valores marcados (tema) salen de --theme-palette-color-N;
+     el resto son tintes derivados para superficies internas.
+     ------------------------------------------------------------
+     ink   #e65616 acento (tema 1)  | red   #d1310a hover (tema 2)
+     muted #898989 texto  (tema 3)  | ink-2 #ffffff titulares (tema 4)
+     rule  #303030 bordes (tema 5)  | panel #1a1a1a fondo sitio (tema 7)
+     paper #1f1f1f contenido (tema 8) — el widget se funde con la entrada
+     ============================================================ */
+  --paper:#1f1f1f; --panel:#1a1a1a; --cell:#242424; --hover:#2b2b2b;
+  --grid:#2a2a2a; --rule:#303030;
+  --ink:#e65616; --ink-2:#ffffff; --red:#d1310a; --green:#4fbf72; --amber:#e8c547;
+  --text:#c4c4c4; --muted:#9a9a9a; --soft:#868686;
+  /* bucles del mapa K: el acento de marca primero, luego tonos
+     distinguibles entre sí y con >=3:1 sobre el fondo oscuro */
+  --g1:#e65616; --g2:#45b6f0; --g3:#9d7cf0; --g4:#4fbf72; --g5:#e8c547; --g6:#f06292;
+  /* ============================================================ */
+
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+
+  all:initial;
+  display:block;
+  font-family:var(--sans);
+  color:var(--text);
+  font-size:15px;
+  line-height:1.5;
+  background:var(--paper);
+  background-image:radial-gradient(var(--grid) 1px, transparent 1.1px);
+  background-size:10px 10px;
+  border:1px solid var(--rule);
+  padding:0;
+  max-width:100%;
+  -webkit-font-smoothing:antialiased;
+}
+#kl *,#kl *::before,#kl *::after{box-sizing:border-box;}
+#kl p,#kl h1,#kl h2,#kl h3,#kl div,#kl span,#kl ul,#kl li,#kl table{margin:0;padding:0;}
+#kl button,#kl select,#kl textarea,#kl input{font-family:inherit;font-size:inherit;color:inherit;}
+#kl ul{list-style:none;}
+
+#kl .sheet{padding:22px 22px 16px;}
+
+/* ---- cabecera ---- */
+#kl .head{
+  display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px;
+  border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:18px;
+}
+#kl .eyebrow{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--soft);margin-bottom:2px;
+}
+#kl h1{
+  font-family:var(--cond);font-weight:700;font-size:29px;line-height:1;
+  letter-spacing:-.015em;color:var(--ink-2);
+}
+#kl .head-sub{font-size:13px;color:var(--muted);margin-top:5px;max-width:52ch;}
+#kl .head-r{margin-left:auto;display:flex;flex-direction:column;gap:7px;align-items:flex-end;}
+
+#kl .fieldlab{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--soft);
+}
+#kl .seg{display:flex;border:1px solid var(--ink);background:#fff;}
+#kl .seg button{
+  font-family:var(--mono);font-size:12.5px;font-weight:500;
+  padding:5px 11px;background:transparent;border:0;border-right:1px solid var(--rule);
+  cursor:pointer;color:var(--ink);transition:background .12s,color .12s;
+}
+#kl .seg button:last-child{border-right:0;}
+#kl .seg button:hover{background:var(--hover);}
+#kl .seg button[aria-pressed="true"]{background:var(--ink);color:#171717;}
+#kl .seg button:focus-visible{outline:2px solid var(--red);outline-offset:1px;}
+
+/* ---- rejilla principal ---- */
+#kl .cols{display:grid;grid-template-columns:minmax(290px,340px) 1fr;gap:20px;align-items:start;}
+@media (max-width:820px){#kl .cols{grid-template-columns:1fr;}}
+
+#kl .panel{background:var(--panel);border:1px solid var(--rule);padding:13px 14px 14px;}
+#kl .panel + .panel{margin-top:16px;}
+#kl .ptitle{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--ink);border-bottom:1px solid var(--rule);padding-bottom:6px;margin-bottom:10px;
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+}
+#kl .ptitle .hint{letter-spacing:0;text-transform:none;color:var(--soft);font-size:10.5px;}
+
+/* ---- editor ---- */
+#kl textarea{
+  width:100%;min-height:158px;resize:vertical;
+  font-family:var(--mono);font-size:12.5px;line-height:1.65;
+  background:var(--cell);border:1px solid var(--rule);padding:9px 10px;color:var(--text);
+  tab-size:2;
+}
+#kl textarea:focus{outline:2px solid var(--ink);outline-offset:-1px;}
+#kl .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px;}
+#kl .btn{
+  font-family:var(--cond);font-weight:600;font-size:13.5px;letter-spacing:.02em;
+  background:var(--ink);color:#171717;border:1px solid var(--ink);padding:6px 15px;cursor:pointer;
+  transition:background .12s;
+}
+#kl .btn:hover{filter:brightness(1.12);}
+#kl .btn:focus-visible{outline:2px solid var(--red);outline-offset:2px;}
+#kl .btn.ghost{background:transparent;color:var(--ink);}
+#kl .btn.ghost:hover{background:var(--hover);filter:none;}
+#kl .chip{
+  font-family:var(--mono);font-size:11px;background:var(--cell);border:1px solid var(--rule);
+  padding:3px 8px;cursor:pointer;color:var(--text);
+}
+#kl .chip:hover{border-color:var(--ink);background:var(--hover);color:var(--ink);}
+#kl .chiprow{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;}
+
+#kl .status{
+  font-family:var(--mono);font-size:11.5px;margin-top:10px;padding:7px 9px;
+  border-left:3px solid var(--green);background:var(--cell);color:var(--text);
+}
+#kl .status.err{border-left-color:var(--red);color:var(--red);}
+#kl .status.warn{border-left-color:var(--amber);color:var(--amber);}
+
+#kl .syntax{margin-top:11px;font-size:11.5px;color:var(--muted);line-height:1.75;}
+#kl .syntax code{font-family:var(--mono);font-size:11px;background:var(--cell);border:1px solid var(--rule);padding:0 4px;color:var(--ink);}
+#kl details{margin-top:10px;}
+#kl summary{
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink);cursor:pointer;
+}
+#kl summary:focus-visible{outline:2px solid var(--red);outline-offset:2px;}
+
+/* ---- mapas ---- */
+#kl .maps{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start;}
+#kl .mapwrap{display:flex;flex-direction:column;gap:6px;}
+#kl .maplab{
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+}
+#kl .maplab b{color:var(--ink);font-weight:600;}
+#kl svg{display:block;max-width:100%;height:auto;}
+
+#kl .legend{margin-top:14px;border-top:1px solid var(--rule);padding-top:11px;}
+#kl .legend ul{display:flex;flex-wrap:wrap;gap:7px 16px;}
+#kl .legend li{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;}
+#kl .swatch{width:15px;height:11px;border:2px solid currentColor;border-radius:3px;flex:none;}
+#kl .legend .ess{font-size:9.5px;letter-spacing:.1em;color:var(--soft);}
+
+/* ---- tabla de verdad ---- */
+#kl .tvwrap{max-height:335px;overflow:auto;border:1px solid var(--rule);background:var(--panel);}
+#kl table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12px;}
+#kl thead th{
+  position:sticky;top:0;background:#262626;color:var(--text);font-weight:500;
+  border-bottom:1px solid var(--ink);
+  padding:5px 7px;text-align:center;font-size:10.5px;letter-spacing:.1em;z-index:1;
+}
+#kl tbody td{padding:2px 7px;text-align:center;border-bottom:1px solid #262626;color:var(--muted);}
+#kl tbody tr:hover td{background:var(--hover);}
+#kl td.mi{color:var(--soft);font-size:10.5px;}
+#kl td.bits{color:var(--text);letter-spacing:.14em;}
+#kl td.out{cursor:pointer;font-weight:600;width:46px;user-select:none;}
+#kl td.out:hover{background:#33271e;}
+#kl td.v1{color:var(--ink);} #kl td.v0{color:var(--soft);} #kl td.vx{color:var(--red);}
+
+/* ---- resultados ---- */
+#kl .res{display:grid;gap:0;}
+#kl .res .item{
+  display:grid;grid-template-columns:118px 1fr;gap:12px;
+  padding:7px 0;border-bottom:1px dotted var(--rule);align-items:baseline;
+}
+#kl .res .item:last-child{border-bottom:0;}
+#kl .res .k{
+  font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--soft);
+}
+#kl .res .v{font-family:var(--mono);font-size:13px;color:var(--text);word-break:break-word;line-height:1.6;}
+#kl .res .v.big{font-size:15px;font-weight:600;color:var(--ink-2);}
+#kl .res .v em{font-style:normal;color:var(--ink);}
+#kl .pi{display:inline-block;margin:0 3px 3px 0;padding:1px 6px;border:1px solid var(--rule);background:var(--cell);font-size:11.5px;color:var(--muted);}
+#kl .pi.is-ess{border-color:var(--ink);color:var(--ink);font-weight:600;background:#2c2119;}
+
+/* ---- propagación ---- */
+#kl .tins{
+  display:flex;gap:8px;flex-wrap:wrap;padding-bottom:9px;margin-bottom:8px;
+  border-bottom:1px solid var(--rule);
+}
+#kl .sig{
+  font-family:var(--mono);font-size:12.5px;background:var(--cell);border:1px solid var(--rule);
+  padding:2px 8px;color:var(--text);
+}
+#kl .sig i{font-style:normal;color:var(--soft);margin-right:5px;}
+#kl .trow{
+  display:grid;grid-template-columns:78px 1fr 26px;gap:10px;align-items:baseline;
+  font-family:var(--mono);font-size:12px;padding:3px 0;border-bottom:1px dotted #2b2b2b;
+}
+#kl .trow.last{border-bottom:0;border-top:1.5px solid var(--ink);margin-top:4px;padding-top:7px;}
+#kl .trow.last .tn{color:var(--ink);font-weight:600;}
+#kl .tn{color:var(--text);font-weight:500;}
+#kl .te{color:var(--muted);word-break:break-all;}
+#kl .tv{text-align:right;font-weight:600;font-size:13px;}
+#kl .tv.v1{color:var(--ink);} #kl .tv.v0{color:var(--soft);}
+#kl tbody tr.sel td{background:#2c2119;}
+#kl tbody tr.sel td.mi{box-shadow:inset 3px 0 0 var(--ink);}
+
+/* ---- cajetín ---- */
+#kl .block{
+  margin-top:20px;margin-left:auto;width:max-content;max-width:100%;
+  border:1.5px solid var(--rule);background:var(--panel);
+}
+#kl .block table{font-size:11.5px;}
+#kl .block td{border:1px solid var(--rule);padding:4px 10px;text-align:left;color:var(--text);}
+#kl .block td.bk{
+  font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--soft);
+  background:var(--cell);white-space:nowrap;
+}
+#kl .foot{
+  margin-top:14px;padding-top:9px;border-top:1px solid var(--rule);
+  font-size:11px;color:var(--soft);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+}
+@media (prefers-reduced-motion:reduce){#kl *{transition:none!important;}}
+</style>
+</head>
+<body>
+
+<div id="kl">
+<div class="sheet">
+
+  <div class="head">
+    <div>
+      <div class="eyebrow">Álgebra de Boole · lógica combinacional</div>
+      <h1>Karnaugh Lab</h1>
+      <div class="head-sub">Describe el circuito con puertas, obtén la tabla de verdad, el mapa de Karnaugh con sus agrupaciones y la expresión mínima. Hasta 5 variables.</div>
+    </div>
+    <div class="head-r">
+      <div class="fieldlab">Variables</div>
+      <div class="seg" id="varseg"></div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <!-- IZQUIERDA -->
+    <div>
+      <div class="panel">
+        <div class="ptitle"><span>#Circuito</span><span class="hint">la última línea es la salida</span></div>
+        <textarea id="src" spellcheck="false" aria-label="Descripción del circuito"></textarea>
+        <div class="row">
+          <button class="btn" id="calc">Calcular</button>
+          <button class="btn ghost" id="clear">Vaciar</button>
+        </div>
+        <div class="chiprow" id="examples"></div>
+        <div class="status" id="status">Listo.</div>
+
+        <details>
+          <summary>Sintaxis</summary>
+          <div class="syntax">
+            <b>Puertas:</b> <code>AND</code> <code>OR</code> <code>NOT</code> <code>NAND</code> <code>NOR</code> <code>XOR</code> <code>XNOR</code>, con cualquier número de entradas: <code>NAND(A,B,C)</code>.<br>
+            <b>Operadores:</b> <code>+</code> suma · <code>·</code> <code>*</code> o yuxtaposición (<code>AB</code>) producto · <code>'</code> o <code>!</code> negación · <code>^</code> XOR.<br>
+            <b>Señales intermedias:</b> una por línea, <code>G1 = NAND(A,A)</code>. Puedes reusarlas más abajo.<br>
+            <b>Indiferencias:</b> haz clic en una celda del mapa o de la tabla para ciclar 0 → 1 → X.
+          </div>
+        </details>
+      </div>
+
+      <div class="panel">
+        <div class="ptitle">
+          <span>#Tabla</span>
+          <div class="seg" id="ordseg">
+            <button data-ord="msb" aria-pressed="true">A→E</button>
+            <button data-ord="qucs" aria-pressed="false">E→A</button>
+          </div>
+        </div>
+        <div class="tvwrap"><table id="tv"><thead></thead><tbody></tbody></table></div>
+        <div class="syntax" id="ordnote"></div>
+      </div>
+    </div>
+
+    <!-- DERECHA -->
+    <div>
+      <div class="panel">
+        <div class="ptitle"><span>#Mapa-K</span><span class="hint" id="maphint"></span></div>
+        <div class="maps" id="maps"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <div class="panel">
+        <div class="ptitle"><span>#Resultados</span></div>
+        <div class="res" id="res"></div>
+      </div>
+
+      <div class="panel">
+        <div class="ptitle"><span>#Propagacion</span><span class="hint" id="tracehint"></span></div>
+        <div id="trace"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <table>
+      <tr><td class="bk">Función</td><td id="bk-f">—</td><td class="bk">Variables</td><td id="bk-n">—</td></tr>
+      <tr><td class="bk">Términos SOP</td><td id="bk-t">—</td><td class="bk">Puertas mín.</td><td id="bk-g">—</td></tr>
+      <tr><td class="bk">Primos / esenc.</td><td id="bk-p">—</td><td class="bk">Fecha</td><td id="bk-d">—</td></tr>
+    </table>
+  </div>
+
+  <div class="foot">
+    <span>Karnaugh Lab — herramienta de apoyo. Verifica siempre contra tu simulador.</span>
+    <span id="foot-r"></span>
+  </div>
+
+</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== NÚCLEO LÓGICO ===================== */
+const FUNCS = { AND:1, OR:1, NOT:1, NAND:1, NOR:1, XOR:1, XNOR:1, BUF:1 };
+function LErr(m){ const e = new Error(m); e.lab = true; return e; }
+
+function tokenize(s, known){
+  const t = []; let i = 0;
+  while(i < s.length){
+    const c = s[i];
+    if(/\s/.test(c)){ i++; continue; }
+    if(/[A-Za-z_]/.test(c)){
+      let j = i;
+      while(j < s.length && /[A-Za-z0-9_]/.test(s[j])) j++;
+      const word = s.slice(i,j), up = word.toUpperCase();
+      let k = j; while(k < s.length && /\s/.test(s[k])) k++;
+      if(FUNCS[up] && s[k] === '('){ t.push({t:'func', v:up}); i = j; continue; }
+      if(known.has(word)){ t.push({t:'id', v:word}); i = j; continue; }
+      let ok = true;
+      for(const ch of word) if(!known.has(ch)){ ok = false; break; }
+      if(ok){ for(const ch of word) t.push({t:'id', v:ch}); i = j; continue; }
+      throw LErr('señal desconocida "' + word + '"');
+    }
+    if(c === '0' || c === '1'){ t.push({t:'const', v:+c}); i++; continue; }
+    if(c === '(' || c === ')' || c === ','){ t.push({t:c}); i++; continue; }
+    if(c === '+' || c === '|'){ t.push({t:'or'}); i++; continue; }
+    if(c === '*' || c === '&' || c === '\u00b7' || c === '.'){ t.push({t:'and'}); i++; continue; }
+    if(c === '^'){ t.push({t:'xor'}); i++; continue; }
+    if(c === "'" || c === '\u2019'){ t.push({t:'post'}); i++; continue; }
+    if(c === '!' || c === '~' || c === '\u00ac'){ t.push({t:'pre'}); i++; continue; }
+    throw LErr('carácter no reconocido "' + c + '"');
+  }
+  return t;
+}
+
+function parse(tokens){
+  let p = 0;
+  const peek = () => tokens[p];
+  const eat = (tt) => { if(!tokens[p] || tokens[p].t !== tt) throw LErr('falta "' + tt + '"'); return tokens[p++]; };
+  const startsPrimary = (tk) => tk && (tk.t==='id'||tk.t==='const'||tk.t==='('||tk.t==='func'||tk.t==='pre');
+  function primary(){
+    const tk = peek();
+    if(!tk) throw LErr('expresión incompleta');
+    if(tk.t === 'pre'){ p++; return { op:'not', args:[primary()] }; }
+    if(tk.t === '('){ p++; const e = orExpr(); eat(')'); return e; }
+    if(tk.t === 'const'){ p++; return { op:'const', v:tk.v }; }
+    if(tk.t === 'id'){ p++; return { op:'sig', v:tk.v }; }
+    if(tk.t === 'func'){
+      p++; eat('(');
+      const args = [orExpr()];
+      while(peek() && peek().t === ','){ p++; args.push(orExpr()); }
+      eat(')');
+      const f = tk.v.toLowerCase();
+      if((f==='not'||f==='buf') && args.length !== 1) throw LErr(tk.v + '() admite 1 entrada');
+      return { op:f, args };
+    }
+    throw LErr('token inesperado');
+  }
+  function postfix(){ let e = primary(); while(peek() && peek().t === 'post'){ p++; e = { op:'not', args:[e] }; } return e; }
+  function andExpr(){
+    let e = postfix();
+    for(;;){
+      if(peek() && peek().t === 'and'){ p++; e = { op:'and', args:[e, postfix()] }; continue; }
+      if(startsPrimary(peek())){ e = { op:'and', args:[e, postfix()] }; continue; }
+      break;
+    }
+    return e;
+  }
+  function xorExpr(){ let e = andExpr(); while(peek() && peek().t === 'xor'){ p++; e = { op:'xor', args:[e, andExpr()] }; } return e; }
+  function orExpr(){ let e = xorExpr(); while(peek() && peek().t === 'or'){ p++; e = { op:'or', args:[e, xorExpr()] }; } return e; }
+  const r = orExpr();
+  if(p !== tokens.length) throw LErr('sobra texto en la expresión');
+  return r;
+}
+
+function evalAst(n, env){
+  switch(n.op){
+    case 'const': return n.v;
+    case 'sig': { const v = env[n.v]; if(v === undefined) throw LErr('señal sin definir "' + n.v + '"'); return v; }
+    case 'buf':  return evalAst(n.args[0], env);
+    case 'not':  return evalAst(n.args[0], env) ? 0 : 1;
+    case 'and':  return n.args.every(a => evalAst(a, env)) ? 1 : 0;
+    case 'or':   return n.args.some(a => evalAst(a, env)) ? 1 : 0;
+    case 'nand': return n.args.every(a => evalAst(a, env)) ? 0 : 1;
+    case 'nor':  return n.args.some(a => evalAst(a, env)) ? 0 : 1;
+    case 'xor':  return n.args.reduce((x,a) => x ^ evalAst(a, env), 0) ? 1 : 0;
+    case 'xnor': return n.args.reduce((x,a) => x ^ evalAst(a, env), 0) ? 0 : 1;
+  }
+  throw LErr('operación desconocida');
+}
+
+function buildTable(src, vars){
+  const lines = src.split('\n')
+    .map(s => s.replace(/\/\/.*$/,'').replace(/#.*$/,'').trim())
+    .filter(s => s.length);
+  if(!lines.length) throw LErr('escribe al menos una expresión');
+  const known = new Set(vars), defs = [];
+  let auto = 0;
+  lines.forEach((line, li) => {
+    let name, body;
+    const m = line.match(/^([A-Za-z_]\w*)\s*=\s*(.+)$/);
+    if(m){ name = m[1]; body = m[2]; } else { name = '_out' + (++auto); body = line; }
+    if(vars.indexOf(name) >= 0) throw LErr('línea ' + (li+1) + ': "' + name + '" es una entrada, no puede redefinirse');
+    let ast;
+    try { ast = parse(tokenize(body, known)); }
+    catch(e){ throw LErr('línea ' + (li+1) + ': ' + e.message); }
+    defs.push({ name, ast, body, disp: name.charAt(0) === '_' ? 'F' : name });
+    known.add(name);
+  });
+  const out = defs[defs.length-1].name;
+  const n = vars.length, N = 1 << n, values = new Array(N);
+  for(let idx = 0; idx < N; idx++){
+    const env = {};
+    for(let b = 0; b < n; b++) env[vars[b]] = (idx >> (n-1-b)) & 1;
+    for(const d of defs) env[d.name] = evalAst(d.ast, env);
+    values[idx] = env[out];
+  }
+  return { values, defs, out: out.charAt(0) === '_' ? 'F' : out };
+}
+
+const popcount = (x) => { let c = 0; while(x){ x &= x-1; c++; } return c; };
+const impKey = (im) => im.v + '/' + im.care;
+
+function primeImplicants(ones, dcs, n){
+  const full = (1 << n) - 1;
+  let cur = new Map();
+  for(const m of ones.concat(dcs)) cur.set(m + '/' + full, { v:m, care:full });
+  const primes = new Map();
+  while(cur.size){
+    const list = [...cur.values()], used = new Set(), next = new Map();
+    for(let i = 0; i < list.length; i++) for(let j = i+1; j < list.length; j++){
+      const a = list[i], b = list[j];
+      if(a.care !== b.care) continue;
+      const diff = a.v ^ b.v;
+      if(diff === 0 || popcount(diff) !== 1 || (diff & a.care) === 0) continue;
+      const im = { v: a.v & ~diff, care: a.care & ~diff };
+      next.set(impKey(im), im); used.add(impKey(a)); used.add(impKey(b));
+    }
+    for(const im of list) if(!used.has(impKey(im))) primes.set(impKey(im), im);
+    cur = next;
+  }
+  return [...primes.values()];
+}
+
+function coveredMinterms(im, n){
+  const free = [];
+  for(let b = 0; b < n; b++) if(!((im.care >> b) & 1)) free.push(b);
+  const out = [];
+  for(let k = 0; k < (1 << free.length); k++){
+    let v = im.v;
+    free.forEach((b,i) => { if((k >> i) & 1) v |= (1 << b); });
+    out.push(v);
+  }
+  return out;
+}
+
+function minimalCover(ones, dcs, n){
+  if(!ones.length) return { primes:[], essentials:[], cover:[] };
+  const primes = primeImplicants(ones, dcs, n);
+  const oneSet = new Set(ones);
+  const cov = primes.map(p => new Set(coveredMinterms(p, n).filter(m => oneSet.has(m))));
+  const essIdx = new Set();
+  for(const m of ones){
+    const who = [];
+    for(let i = 0; i < primes.length; i++) if(cov[i].has(m)) who.push(i);
+    if(who.length === 1) essIdx.add(who[0]);
+  }
+  const done = new Set();
+  for(const i of essIdx) for(const m of cov[i]) done.add(m);
+  const rest = ones.filter(m => !done.has(m));
+  let extra = [];
+  if(rest.length){
+    let prods = [new Set()], blew = false;
+    for(const m of rest){
+      const opts = [];
+      for(let i = 0; i < primes.length; i++) if(!essIdx.has(i) && cov[i].has(m)) opts.push(i);
+      const next = new Map();
+      for(const pr of prods) for(const i of opts){
+        const s = new Set(pr); s.add(i);
+        next.set([...s].sort((a,b)=>a-b).join(','), s);
+      }
+      prods = [...next.values()].sort((a,b) => a.size - b.size);
+      const keep = [];
+      for(const s of prods){
+        let sub = false;
+        for(const k of keep){ let all = true; for(const x of k) if(!s.has(x)){ all = false; break; } if(all){ sub = true; break; } }
+        if(!sub) keep.push(s);
+      }
+      prods = keep;
+      if(prods.length > 4000){ blew = true; break; }
+    }
+    if(blew){
+      const need = new Set(rest);
+      while(need.size){
+        let best = -1, bs = -1;
+        for(let i = 0; i < primes.length; i++){
+          if(essIdx.has(i) || extra.indexOf(i) >= 0) continue;
+          let c = 0; for(const m of cov[i]) if(need.has(m)) c++;
+          const sc = c*100 - popcount(primes[i].care);
+          if(c > 0 && sc > bs){ bs = sc; best = i; }
+        }
+        if(best < 0) break;
+        extra.push(best);
+        for(const m of cov[best]) need.delete(m);
+      }
+    } else {
+      let best = null, bsc = null;
+      for(const s of prods){
+        const lits = [...s].reduce((a,i) => a + popcount(primes[i].care), 0);
+        if(!bsc || s.size < bsc[0] || (s.size === bsc[0] && lits < bsc[1])){ bsc = [s.size, lits]; best = s; }
+      }
+      extra = [...best];
+    }
+  }
+  return {
+    primes,
+    essentials: [...essIdx].map(i => primes[i]),
+    essIdx,
+    cover: [...essIdx, ...extra].map(i => primes[i])
+  };
+}
+
+function termText(im, vars){
+  const n = vars.length, parts = [];
+  for(let b = n-1; b >= 0; b--){
+    if(!((im.care >> b) & 1)) continue;
+    const nm = vars[n-1-b];
+    parts.push(((im.v >> b) & 1) ? nm : nm + "'");
+  }
+  return parts.length ? parts.join('') : '1';
+}
+function sumText(im, vars){
+  const n = vars.length, parts = [];
+  for(let b = n-1; b >= 0; b--){
+    if(!((im.care >> b) & 1)) continue;
+    const nm = vars[n-1-b];
+    parts.push(((im.v >> b) & 1) ? nm + "'" : nm);
+  }
+  if(!parts.length) return '0';
+  return parts.length === 1 ? parts[0] : '(' + parts.join('+') + ')';
+}
+function gateCount(cover, vars){
+  if(!cover.length) return { total:0, txt:'0 (F = 0)' };
+  if(cover.length === 1 && cover[0].care === 0) return { total:0, txt:'0 (F = 1)' };
+  const inv = new Set(); let ands = 0; const n = vars.length;
+  for(const im of cover){
+    let lits = 0;
+    for(let b = 0; b < n; b++){
+      if(!((im.care >> b) & 1)) continue;
+      lits++;
+      if(!((im.v >> b) & 1)) inv.add(vars[n-1-b]);
+    }
+    if(lits >= 2) ands++;
+  }
+  const or = cover.length >= 2 ? 1 : 0;
+  const total = inv.size + ands + or;
+  const bits = [];
+  if(inv.size) bits.push(inv.size + ' NOT');
+  if(ands) bits.push(ands + ' AND');
+  if(or) bits.push(or + ' OR');
+  return { total, txt: total + '  (' + bits.join(' + ') + ')' };
+}
+function nandText(cover, vars){
+  if(!cover.length) return '0';
+  if(cover.length === 1 && cover[0].care === 0) return '1';
+  const inner = cover.map(im => {
+    const n = vars.length, ls = [];
+    for(let b = n-1; b >= 0; b--){
+      if(!((im.care >> b) & 1)) continue;
+      const nm = vars[n-1-b];
+      ls.push(((im.v >> b) & 1) ? nm : nm + "'");
+    }
+    return ls.length === 1 ? 'NAND(' + ls[0] + ',' + ls[0] + ')' : 'NAND(' + ls.join(',') + ')';
+  });
+  return inner.length === 1 ? 'NAND(' + inner[0] + ',' + inner[0] + ')' : 'NAND(' + inner.join(', ') + ')';
+}
+
+/* ===================== ESTADO ===================== */
+const ALLVARS = ['A','B','C','D','E'];
+const GC = ['--g1','--g2','--g3','--g4','--g5','--g6'];
+let nVars = 5, vars = ALLVARS.slice(0,5);
+let values = [], outName = 'F', ord = 'msb', dirty = false, lastCover = [];
+let lastDefs = [], traceIdx = 0;
+
+const EXAMPLES = [
+  { n:4, label:'SOP simple', src:'F = AB + BC + CD' },
+  { n:5, label:'Red de 11 NAND', src:
+"G1 = NAND(A,A,A)\nG2 = NAND(C,C,C)\nG3 = NAND(D,D,D)\nG4 = NAND(E,E,E)\nG5 = NAND(G4,G3,G3)\nG6 = NAND(D,B,B)\nG7 = NAND(G1,C,E)\nG8 = NAND(A,G2,E)\nG9 = NAND(G5,G6,G7)\nG10 = NAND(G9,G9,G9)\nSALIDA = NAND(G10,G8,G8)" },
+  { n:4, label:'XOR de 3', src:'F = A ^ B ^ C' },
+  { n:3, label:'Mayoría', src:'F = AB + AC + BC' },
+  { n:4, label:'Envolvente', src:"F = B'D'" }
+];
+
+const $ = (id) => document.getElementById(id);
+const gray = (k) => { const o = []; for(let i = 0; i < (1<<k); i++) o.push(i ^ (i>>1)); return o; };
+function geom(){
+  if(nVars === 2) return { rv:['A'], cv:['B'], lv:null };
+  if(nVars === 3) return { rv:['A'], cv:['B','C'], lv:null };
+  if(nVars === 4) return { rv:['A','B'], cv:['C','D'], lv:null };
+  return { rv:['A','B'], cv:['C','D'], lv:'E' };
+}
+const bitOf = (v) => nVars - 1 - vars.indexOf(v);
+function idxFrom(rowG, colG, layer){
+  const g = geom(); let idx = 0;
+  g.rv.forEach((v,i) => { if((rowG >> (g.rv.length-1-i)) & 1) idx |= 1 << bitOf(v); });
+  g.cv.forEach((v,i) => { if((colG >> (g.cv.length-1-i)) & 1) idx |= 1 << bitOf(v); });
+  if(g.lv && layer) idx |= 1 << bitOf(g.lv);
+  return idx;
+}
+
+/* ===================== RENDER ===================== */
+function setStatus(msg, kind){
+  const el = $('status');
+  el.textContent = msg;
+  el.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function recompute(){
+  const ones = [], dcs = [], zeros = [];
+  values.forEach((v,i) => { if(v === 1) ones.push(i); else if(v === 'x') dcs.push(i); else zeros.push(i); });
+  const mc = minimalCover(ones, dcs, nVars);
+  // Orden estable: grupos grandes primero, luego alfabético. Mapa, leyenda y
+  // resultados leen todos de mc.cover, así que los colores no se descuadran.
+  mc.cover.sort((a,b) => popcount(a.care) - popcount(b.care) ||
+                         termText(a,vars).localeCompare(termText(b,vars)));
+  lastCover = mc.cover;
+  const mcz = minimalCover(zeros, dcs, nVars);
+  mcz.cover.sort((a,b) => popcount(a.care) - popcount(b.care) ||
+                          sumText(a,vars).localeCompare(sumText(b,vars)));
+  drawMaps(ones, dcs);
+  drawLegend(mc);
+  drawTruth();
+  drawTrace();
+  drawResults(ones, dcs, zeros, mc, mcz);
+  drawBlock(mc);
+}
+
+function drawMaps(ones, dcs){
+  const g = geom(), host = $('maps');
+  host.innerHTML = '';
+  const rows = gray(g.rv.length), cols = gray(g.cv.length);
+  const CELL = 54, PL = 52, PT = 40;
+  const W = PL + cols.length*CELL, H = PT + rows.length*CELL;
+  const layers = g.lv ? [0,1] : [null];
+  const NS = 'http://www.w3.org/2000/svg';
+
+  $('maphint').textContent = g.lv
+    ? 'dos capas: ' + g.lv + '=0 y ' + g.lv + '=1'
+    : 'clic en una celda para cambiarla';
+
+  layers.forEach(layer => {
+    const wrap = document.createElement('div');
+    wrap.className = 'mapwrap';
+    if(g.lv){
+      const lab = document.createElement('div');
+      lab.className = 'maplab';
+      lab.innerHTML = 'capa <b>' + g.lv + ' = ' + layer + '</b>';
+      wrap.appendChild(lab);
+    }
+    const svg = document.createElementNS(NS,'svg');
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('width', W); svg.setAttribute('height', H);
+    svg.setAttribute('role','img');
+    svg.setAttribute('aria-label','Mapa de Karnaugh' + (g.lv ? ' capa ' + g.lv + '=' + layer : ''));
+
+    // Los atributos de presentación SVG comparten nombre con la propiedad CSS,
+    // pero var() sólo es fiable vía style: se separan aquí.
+    const mk = (t, at) => {
+      const e = document.createElementNS(NS, t), st = [];
+      for(const k in at){
+        const v = at[k];
+        if(typeof v === 'string' && v.indexOf('var(--') >= 0) st.push(k + ':' + v);
+        else e.setAttribute(k, v);
+      }
+      if(st.length) e.setAttribute('style', st.join(';'));
+      return e;
+    };
+
+    svg.appendChild(mk('rect',{x:0,y:0,width:W,height:H,fill:'var(--panel)'}));
+    // esquina con diagonal
+    svg.appendChild(mk('rect',{x:0,y:0,width:PL,height:PT,fill:'#1c1c1c',stroke:'var(--rule)','stroke-width':1}));
+    svg.appendChild(mk('line',{x1:0,y1:0,x2:PL,y2:PT,stroke:'var(--rule)','stroke-width':1}));
+    let t = mk('text',{x:PL-5,y:15,'text-anchor':'end','font-family':'var(--mono)','font-size':11,fill:'var(--ink)','font-weight':600});
+    t.textContent = g.cv.join(''); svg.appendChild(t);
+    t = mk('text',{x:5,y:PT-6,'text-anchor':'start','font-family':'var(--mono)','font-size':11,fill:'var(--ink)','font-weight':600});
+    t.textContent = g.rv.join(''); svg.appendChild(t);
+
+    const pad = (n,k) => n.toString(2).padStart(k,'0');
+    cols.forEach((cg,c) => {
+      svg.appendChild(mk('rect',{x:PL+c*CELL,y:0,width:CELL,height:PT,fill:'#1c1c1c',stroke:'var(--rule)','stroke-width':1}));
+      const e = mk('text',{x:PL+c*CELL+CELL/2,y:PT/2+4,'text-anchor':'middle','font-family':'var(--mono)','font-size':11.5,fill:'var(--muted)'});
+      e.textContent = pad(cg, g.cv.length); svg.appendChild(e);
+    });
+    rows.forEach((rg,r) => {
+      svg.appendChild(mk('rect',{x:0,y:PT+r*CELL,width:PL,height:CELL,fill:'#1c1c1c',stroke:'var(--rule)','stroke-width':1}));
+      const e = mk('text',{x:PL/2,y:PT+r*CELL+CELL/2+4,'text-anchor':'middle','font-family':'var(--mono)','font-size':11.5,fill:'var(--muted)'});
+      e.textContent = pad(rg, g.rv.length); svg.appendChild(e);
+    });
+
+    rows.forEach((rg,r) => cols.forEach((cg,c) => {
+      const idx = idxFrom(rg, cg, layer);
+      const x = PL + c*CELL, y = PT + r*CELL;
+      const cell = mk('g',{class:'cell',style:'cursor:pointer'});
+      cell.appendChild(mk('rect',{x:x,y:y,width:CELL,height:CELL,fill:'var(--cell)',stroke:'var(--rule)','stroke-width':1}));
+      const mi = mk('text',{x:x+4,y:y+11,'font-family':'var(--mono)','font-size':8,fill:'var(--soft)'});
+      mi.textContent = idx; cell.appendChild(mi);
+      const v = values[idx];
+      const vt = mk('text',{
+        x:x+CELL/2, y:y+CELL/2+7, 'text-anchor':'middle','font-family':'var(--mono)',
+        'font-size':17,'font-weight':600,
+        fill: v === 1 ? 'var(--ink)' : (v === 'x' ? 'var(--red)' : 'var(--soft)')
+      });
+      vt.textContent = v === 'x' ? 'X' : v; cell.appendChild(vt);
+      cell.addEventListener('click', () => cycle(idx));
+      svg.appendChild(cell);
+    }));
+
+    // bucles de agrupación
+    lastCover.forEach((im, gi) => {
+      if(g.lv){
+        const lb = bitOf(g.lv);
+        if(((im.care >> lb) & 1) && (((im.v >> lb) & 1) !== layer)) return;
+      }
+      const rIdx = [], cIdx = [];
+      rows.forEach((rg,r) => { if(matches(im, g.rv, rg)) rIdx.push(r); });
+      cols.forEach((cg,c) => { if(matches(im, g.cv, cg)) cIdx.push(c); });
+      if(!rIdx.length || !cIdx.length) return;
+      const inset = 4 + (gi % 3) * 4;
+      const color = 'var(' + GC[gi % GC.length] + ')';
+      ranges(rIdx, rows.length).forEach(rr => ranges(cIdx, cols.length).forEach(cc => {
+        svg.appendChild(mk('rect',{
+          x: PL + cc[0]*CELL + inset, y: PT + rr[0]*CELL + inset,
+          width: cc[1]*CELL - 2*inset, height: rr[1]*CELL - 2*inset,
+          rx: 8, fill:'none', stroke: color, 'stroke-width': 2.2, 'stroke-linejoin':'round'
+        }));
+      }));
+    });
+
+    wrap.appendChild(svg);
+    host.appendChild(wrap);
+  });
+}
+
+function matches(im, varList, grayVal){
+  for(let i = 0; i < varList.length; i++){
+    const b = bitOf(varList[i]);
+    if(!((im.care >> b) & 1)) continue;
+    const want = (im.v >> b) & 1;
+    const got = (grayVal >> (varList.length-1-i)) & 1;
+    if(want !== got) return false;
+  }
+  return true;
+}
+function ranges(idxs, k){
+  const s = new Set(idxs);
+  if(s.size === k) return [[0,k]];
+  const out = [];
+  for(const i of idxs){
+    if(s.has((i-1+k)%k)) continue;
+    let len = 0, j = i;
+    while(s.has(j) && len < k){ len++; j = (j+1)%k; }
+    if(i + len <= k) out.push([i,len]);
+    else { out.push([i, k-i]); out.push([0, len-(k-i)]); }
+  }
+  return out;
+}
+
+function drawLegend(mc){
+  const el = $('legend');
+  if(!lastCover.length){ el.innerHTML = '<div class="maplab">Sin agrupaciones.</div>'; return; }
+  const essKeys = new Set(mc.essentials.map(impKey));
+  const items = lastCover.map((im, i) => {
+    const ess = essKeys.has(impKey(im));
+    return '<li style="color:var(' + GC[i % GC.length] + ')"><span class="swatch"></span>' +
+      '<span style="color:var(--text)">' + esc(termText(im, vars)) + '</span>' +
+      (ess ? '<span class="ess">ESENCIAL</span>' : '') + '</li>';
+  }).join('');
+  el.innerHTML = '<ul>' + items + '</ul>';
+}
+
+function drawTruth(){
+  const order = ord === 'msb' ? vars.slice() : vars.slice().reverse();
+  const th = '<tr><th>m</th><th>' + order.join('</th><th>') + '</th><th>' + esc(outName) + '</th></tr>';
+  $('tv').querySelector('thead').innerHTML = th;
+
+  const rows = values.map((v,i) => i);
+  rows.sort((a,b) => key(a) - key(b));
+  function key(idx){
+    if(ord === 'msb') return idx;
+    let k = 0;
+    for(let i = 0; i < nVars; i++){
+      const bit = (idx >> bitOf(order[i])) & 1;
+      k = (k << 1) | bit;
+    }
+    return k;
+  }
+  const body = rows.map(idx => {
+    const bits = order.map(v => (idx >> bitOf(v)) & 1).join('');
+    const v = values[idx];
+    const cls = v === 1 ? 'v1' : (v === 'x' ? 'vx' : 'v0');
+    return '<tr data-i="' + idx + '"' + (idx === traceIdx ? ' class="sel"' : '') +
+      '><td class="mi">' + idx + '</td><td class="bits">' +
+      bits.split('').join('</td><td class="bits">') + '</td>' +
+      '<td class="out ' + cls + '" data-i="' + idx + '">' + (v === 'x' ? 'X' : v) + '</td></tr>';
+  }).join('');
+  const tb = $('tv').querySelector('tbody');
+  tb.innerHTML = body;
+  tb.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => {
+    traceIdx = +tr.dataset.i; drawTruth(); drawTrace();
+  }));
+  tb.querySelectorAll('td.out').forEach(td => td.addEventListener('click', (ev) => {
+    ev.stopPropagation(); cycle(+td.dataset.i);
+  }));
+
+  $('ordnote').innerHTML = ord === 'msb'
+    ? 'Convención de texto: <b>A</b> es el bit más significativo.'
+    : 'Convención QucsStudio: la fuente <code>Num=1</code> es el bit menos significativo, por eso <b>' + vars[nVars-1] + '</b> queda a la izquierda.';
+}
+
+function drawResults(ones, dcs, zeros, mc, mcz){
+  const sop = mc.cover.length ? mc.cover.map(t => termText(t, vars)).join(' + ') : '0';
+  const pos = mcz.cover.length ? mcz.cover.map(t => sumText(t, vars)).join(' · ') : '1';
+  const gc = gateCount(mc.cover, vars);
+  const essKeys = new Set(mc.essentials.map(impKey));
+  const piHtml = mc.primes.length
+    ? mc.primes.slice().sort((a,b) => termText(a,vars).localeCompare(termText(b,vars)))
+        .map(p => '<span class="pi' + (essKeys.has(impKey(p)) ? ' is-ess' : '') + '">' + esc(termText(p,vars)) + '</span>').join('')
+    : '—';
+  const dtxt = dcs.length ? ' + d(' + dcs.join(', ') + ')' : '';
+
+  const item = (k,v,big) => '<div class="item"><div class="k">' + k + '</div><div class="v' + (big ? ' big' : '') + '">' + v + '</div></div>';
+  $('res').innerHTML =
+    item('SOP mínima', '<em>' + esc(outName) + '</em> = ' + esc(sop), true) +
+    item('POS mínima', '<em>' + esc(outName) + '</em> = ' + esc(pos)) +
+    item('Canónica Σ', 'Σm(' + ones.join(', ') + ')' + dtxt) +
+    item('Canónica Π', 'ΠM(' + zeros.join(', ') + ')' + (dcs.length ? ' · d(' + dcs.join(', ') + ')' : '')) +
+    item('Primos', piHtml + '<div style="color:var(--soft);font-size:11px;margin-top:4px">' +
+        mc.primes.length + ' primos · ' + mc.essentials.length + ' esenciales (resaltados)</div>') +
+    item('Puertas mín.', esc(gc.txt)) +
+    item('Solo NAND', '<em>' + esc(outName) + '</em> = ' + esc(nandText(mc.cover, vars)));
+}
+
+function drawBlock(mc){
+  const gc = gateCount(mc.cover, vars);
+  $('bk-f').textContent = outName;
+  $('bk-n').textContent = nVars + '  (' + vars.join(', ') + ')';
+  $('bk-t').textContent = mc.cover.length;
+  $('bk-g').textContent = gc.total;
+  $('bk-p').textContent = mc.primes.length + ' / ' + mc.essentials.length;
+  const d = new Date();
+  $('bk-d').textContent = String(d.getDate()).padStart(2,'0') + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' + d.getFullYear();
+  $('foot-r').textContent = dirty ? 'Tabla editada a mano' : 'Generado desde el circuito';
+}
+
+function drawTrace(){
+  const el = $('trace'), hint = $('tracehint');
+  if(!lastDefs.length){
+    hint.textContent = '';
+    el.innerHTML = '<div class="maplab">' + (dirty
+      ? 'La tabla se editó a mano, así que no hay circuito que trazar. Vuelve a calcular desde el editor.'
+      : 'Escribe un circuito para ver cómo se propaga cada señal.') + '</div>';
+    return;
+  }
+  hint.textContent = 'clic en una fila de la tabla';
+  const env = {};
+  for(let b = 0; b < nVars; b++) env[vars[b]] = (traceIdx >> (nVars-1-b)) & 1;
+  const ins = vars.map(v =>
+    '<span class="sig"><i>' + v + '</i>' + env[v] + '</span>').join('');
+  let rows = '';
+  lastDefs.forEach((d,i) => {
+    let val;
+    try { val = evalAst(d.ast, env); env[d.name] = val; } catch(e){ val = '?'; }
+    rows += '<div class="trow' + (i === lastDefs.length-1 ? ' last' : '') + '">' +
+      '<span class="tn">' + esc(d.disp) + '</span>' +
+      '<span class="te">' + esc(d.body) + '</span>' +
+      '<span class="tv ' + (val ? 'v1' : 'v0') + '">' + val + '</span></div>';
+  });
+  el.innerHTML = '<div class="tins">' + ins + '</div>' + rows;
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ===================== INTERACCIÓN ===================== */
+function cycle(idx){
+  const v = values[idx];
+  values[idx] = v === 0 ? 1 : (v === 1 ? 'x' : 0);
+  dirty = true;
+  outName = 'F';
+  lastDefs = [];   // la tabla ya no proviene del circuito: trazarlo mentiría
+  setStatus('Tabla editada a mano. El circuito de arriba ya no la describe.', 'warn');
+  recompute();
+}
+
+function run(){
+  const src = $('src').value;
+  try{
+    const r = buildTable(src, vars);
+    values = r.values; outName = r.out; dirty = false; lastDefs = r.defs;
+    if(traceIdx >= values.length) traceIdx = 0;
+    setStatus('OK — ' + values.filter(v => v === 1).length + ' unos de ' + values.length +
+              '. Salida: ' + r.out + '.');
+    recompute();
+  } catch(e){
+    setStatus(e.lab ? 'Error: ' + e.message : 'Error inesperado: ' + e.message, 'err');
+    // El mapa nunca debe quedar mostrando el tamaño anterior tras cambiar de variables.
+    lastDefs = [];
+    if(values.length !== (1 << nVars)){ values = new Array(1 << nVars).fill(0); outName = 'F'; }
+    if(traceIdx >= values.length) traceIdx = 0;
+    recompute();
+  }
+}
+
+function setVars(n){
+  nVars = n; vars = ALLVARS.slice(0, n);
+  values = new Array(1 << n).fill(0); dirty = false; traceIdx = 0;
+  $('varseg').querySelectorAll('button').forEach(b =>
+    b.setAttribute('aria-pressed', String(+b.dataset.n === n)));
+  run();
+}
+
+function init(){
+  const vs = $('varseg');
+  [2,3,4,5].forEach(n => {
+    const b = document.createElement('button');
+    b.textContent = n; b.dataset.n = n;
+    b.setAttribute('aria-pressed', String(n === nVars));
+    b.addEventListener('click', () => setVars(n));
+    vs.appendChild(b);
+  });
+
+  const ex = $('examples');
+  EXAMPLES.forEach(e => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = e.label;
+    b.addEventListener('click', () => {
+      nVars = e.n; vars = ALLVARS.slice(0, e.n);
+      $('varseg').querySelectorAll('button').forEach(x =>
+        x.setAttribute('aria-pressed', String(+x.dataset.n === e.n)));
+      $('src').value = e.src;
+      run();
+    });
+    ex.appendChild(b);
+  });
+
+  $('calc').addEventListener('click', run);
+  $('clear').addEventListener('click', () => { $('src').value = ''; $('src').focus(); });
+  $('src').addEventListener('keydown', (ev) => {
+    if((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter'){ ev.preventDefault(); run(); }
+  });
+  let t = null;
+  $('src').addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 420); });
+
+  $('ordseg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    ord = b.dataset.ord;
+    $('ordseg').querySelectorAll('button').forEach(x =>
+      x.setAttribute('aria-pressed', String(x.dataset.ord === ord)));
+    drawTruth();
+  }));
+
+  $('src').value = EXAMPLES[1].src;
+  setVars(5);
+}
+init();
+})();
+</script>
+</body>
+</html>
