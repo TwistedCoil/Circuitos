@@ -9,7 +9,7 @@
 
 #kl{
   /* ============================================================
-     PALETA — alineada con el tema Blocksy de justnot.fun.
+     PALETA — alineada con el tema.
      Los valores marcados (tema) salen de --theme-palette-color-N;
      el resto son tintes derivados para superficies internas.
      ------------------------------------------------------------
@@ -222,6 +222,16 @@
   margin-top:14px;padding-top:9px;border-top:1px solid var(--rule);
   font-size:11px;color:var(--soft);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 }
+
+/* ---- manual de uso (NUEVO) ---- */
+#kl .mstep { margin-top: 12px; padding-top: 10px; border-top: 1px dotted var(--rule); }
+#kl .mstep:first-child { margin-top: 4px; padding-top: 0; border-top: 0; }
+#kl .mstep h4 { font-family: var(--mono); font-size: 11px; color: var(--amber); text-transform: uppercase; margin-bottom: 5px; letter-spacing: .05em;}
+#kl .mstep p { font-size: 12px; color: var(--text); line-height: 1.65; margin-bottom: 6px; }
+#kl .mstep ul { list-style: square; margin-left: 16px; margin-bottom: 6px; }
+#kl .mstep li { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
+#kl .mstep code { font-family: var(--mono); font-size: 11px; background: var(--cell); border: 1px solid var(--rule); padding: 0 4px; color: var(--amber); }
+
 @media (prefers-reduced-motion:reduce){#kl *{transition:none!important;}}
 </style>
 </head>
@@ -277,6 +287,66 @@
         <div class="tvwrap"><table id="tv"><thead></thead><tbody></tbody></table></div>
         <div class="syntax" id="ordnote"></div>
       </div>
+
+      <!-- NUEVO PANEL: MANUAL DE USO PARA COMPAÑEROS -->
+      <div class="panel" style="border-top: 2px solid var(--amber);">
+        <div class="ptitle" style="color: var(--amber);">
+          <span>📖 Guía de Aprendizaje</span>
+          <span class="hint" style="color: var(--amber);">¿Qué hace estoooo!!?</span>
+        </div>
+        <details style="margin-top: 4px;">
+          <summary style="font-family: var(--mono); font-size: 11px; color: var(--text); font-weight: 500; cursor: pointer;">¿Cómo usar Karnaugh Lab para estudiar?</summary>
+          <div style="margin-top: 12px;">
+            
+            <div class="mstep">
+              <h4>1. ¿Para qué sirve esta herramienta?</h4>
+              <p>Karnaugh Lab simplifica circuitos lógicos. Si tienes una ecuación complicada, la herramienta encuentra la forma más corta, económica y óptima de construirla usando mapas de Karnaugh.</p>
+            </div>
+
+            <div class="mstep">
+              <h4>2. Cómo definir un Circuito</h4>
+              <p>Escribe tu circuito en el editor de arriba de dos maneras:</p>
+              <ul>
+                <li><b>Ecuaciones simples:</b> Puedes escribir cosas como <code>F = AB + C'</code> directamente.</li>
+                <li><b>Señales intermedias (etapas):</b> Define señales paso a paso para circuitos complejos:
+                  <br><code>G1 = NAND(A, B)</code>
+                  <br><code>F = G1 + C</code>
+                </li>
+                <li>La última línea siempre será la <b>salida final</b> del circuito.</li>
+              </ul>
+            </div>
+
+            <div class="mstep">
+              <h4>3. Diseñar desde cero (Sin código)</h4>
+              <p>¡No necesitas programar nada! Si dejas el editor de circuito vacío, puedes diseñar haciendo clic directo en las celdas del <b>#Mapa-K</b> o la columna del resultado en la <b>#Tabla</b>:</p>
+              <ul>
+                <li>Cada clic cambiará el valor de esa combinación: <code>0</code> → <code>1</code> → <code>X</code>.</li>
+                <li>La <code>X</code> es un estado de "indiferencia" (<i>Don't Care</i>), útil cuando esa combinación de entradas nunca ocurrirá en la vida real. ¡El simplificador usará las <code>X</code> a tu favor para agrandar los grupos de colores!</li>
+              </ul>
+            </div>
+
+            <div class="mstep">
+              <h4>4. Cómo entender el Mapa de Karnaugh</h4>
+              <p>El mapa acomoda los unos (<code>1</code>) de la tabla de verdad en una cuadrícula especial donde las celdas adyacentes solo cambian en un bit (Código Gray).</p>
+              <ul>
+                <li>Los <b>bucles de colores</b> representan las agrupaciones de simplificación. ¡Cuanto más grande sea un bucle (2, 4, 8 o 16 celdas), más variables se eliminan y más simple queda el término!</li>
+                <li>La leyenda de abajo te indica qué término matemático genera cada bucle y si es un <b>implicante primo esencial</b> (es decir, obligatorio para que el circuito funcione).</li>
+              </ul>
+            </div>
+
+            <div class="mstep">
+              <h4>5. Entender la Propagación Paso a Paso</h4>
+              <p>¿Te cuesta ver cómo viaja la corriente por las puertas? Haz esto:</p>
+              <ul>
+                <li>Haz clic en <b>cualquier fila</b> de la <code>#Tabla</code>.</li>
+                <li>Esa combinación quedará resaltada y, en el panel <code>#Propagacion</code> (abajo a la derecha), verás cómo las entradas (A, B, C...) se inyectan en el circuito y qué valor (0 o 1) toma cada puerta lógica intermedia hasta llegar al final.</li>
+              </ul>
+            </div>
+
+          </div>
+        </details>
+      </div>
+
     </div>
 
     <!-- DERECHA -->
@@ -638,8 +708,6 @@ function recompute(){
   const ones = [], dcs = [], zeros = [];
   values.forEach((v,i) => { if(v === 1) ones.push(i); else if(v === 'x') dcs.push(i); else zeros.push(i); });
   const mc = minimalCover(ones, dcs, nVars);
-  // Orden estable: grupos grandes primero, luego alfabético. Mapa, leyenda y
-  // resultados leen todos de mc.cover, así que los colores no se descuadran.
   mc.cover.sort((a,b) => popcount(a.care) - popcount(b.care) ||
                          termText(a,vars).localeCompare(termText(b,vars)));
   lastCover = mc.cover;
@@ -682,8 +750,6 @@ function drawMaps(ones, dcs){
     svg.setAttribute('role','img');
     svg.setAttribute('aria-label','Mapa de Karnaugh' + (g.lv ? ' capa ' + g.lv + '=' + layer : ''));
 
-    // Los atributos de presentación SVG comparten nombre con la propiedad CSS,
-    // pero var() sólo es fiable vía style: se separan aquí.
     const mk = (t, at) => {
       const e = document.createElementNS(NS, t), st = [];
       for(const k in at){
@@ -696,7 +762,6 @@ function drawMaps(ones, dcs){
     };
 
     svg.appendChild(mk('rect',{x:0,y:0,width:W,height:H,fill:'var(--panel)'}));
-    // esquina con diagonal
     svg.appendChild(mk('rect',{x:0,y:0,width:PL,height:PT,fill:'#1c1c1c',stroke:'var(--rule)','stroke-width':1}));
     svg.appendChild(mk('line',{x1:0,y1:0,x2:PL,y2:PT,stroke:'var(--rule)','stroke-width':1}));
     let t = mk('text',{x:PL-5,y:15,'text-anchor':'end','font-family':'var(--mono)','font-size':11,fill:'var(--ink)','font-weight':600});
@@ -734,7 +799,6 @@ function drawMaps(ones, dcs){
       svg.appendChild(cell);
     }));
 
-    // bucles de agrupación
     lastCover.forEach((im, gi) => {
       if(g.lv){
         const lb = bitOf(g.lv);
@@ -906,13 +970,23 @@ function cycle(idx){
   values[idx] = v === 0 ? 1 : (v === 1 ? 'x' : 0);
   dirty = true;
   outName = 'F';
-  lastDefs = [];   // la tabla ya no proviene del circuito: trazarlo mentiría
+  lastDefs = [];   
   setStatus('Tabla editada a mano. El circuito de arriba ya no la describe.', 'warn');
   recompute();
 }
 
 function run(){
   const src = $('src').value;
+  if(!src.trim()){
+    values = new Array(1 << nVars).fill(0);
+    outName = 'F';
+    dirty = false;
+    lastDefs = [];
+    if(traceIdx >= values.length) traceIdx = 0;
+    setStatus('Listo. Define un circuito y presiona Calcular.');
+    recompute();
+    return;
+  }
   try{
     const r = buildTable(src, vars);
     values = r.values; outName = r.out; dirty = false; lastDefs = r.defs;
@@ -922,7 +996,6 @@ function run(){
     recompute();
   } catch(e){
     setStatus(e.lab ? 'Error: ' + e.message : 'Error inesperado: ' + e.message, 'err');
-    // El mapa nunca debe quedar mostrando el tamaño anterior tras cambiar de variables.
     lastDefs = [];
     if(values.length !== (1 << nVars)){ values = new Array(1 << nVars).fill(0); outName = 'F'; }
     if(traceIdx >= values.length) traceIdx = 0;
@@ -932,12 +1005,18 @@ function run(){
 
 function setVars(n){
   nVars = n; vars = ALLVARS.slice(0, n);
-  values = new Array(1 << n).fill(0); dirty = false; traceIdx = 0;
+  // Corrección: Solo resetea la tabla si el cuadro de texto del circuito está vacío
+  if (!$('src').value.trim()) {
+    values = new Array(1 << n).fill(0); 
+    dirty = false;
+  }
+  traceIdx = 0;
   $('varseg').querySelectorAll('button').forEach(b =>
     b.setAttribute('aria-pressed', String(+b.dataset.n === n)));
   run();
 }
 
+// Inicialización de la aplicación
 function init(){
   const vs = $('varseg');
   [2,3,4,5].forEach(n => {
@@ -977,7 +1056,7 @@ function init(){
     drawTruth();
   }));
 
-  $('src').value = EXAMPLES[1].src;
+  // Mantener editor vacío por defecto para no forzar una red base específica.
   setVars(5);
 }
 init();
